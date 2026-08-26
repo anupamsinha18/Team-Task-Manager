@@ -25,19 +25,33 @@ export const DashboardPage: React.FC = () => {
     dispatch(fetchTasks());
   }, [dispatch]);
 
-  // Derived live statistics: strictly use real API stats whenever available
+  // Derive live statistics: strictly calculated from actual database tasks
   const liveStats: TaskStats = useMemo(() => {
-    if (stats) return stats;
-    const total = totalTasks || tasks.length;
+    const actualTotal = totalTasks !== undefined && totalTasks > 0 ? totalTasks : tasks.length;
+    
+    // If backend stats are available and match the active tasks count, use them
+    if (stats && stats.total === actualTotal) {
+      return stats;
+    }
+
+    // Dynamic direct calculation to prevent any stale/phantom mock numbers
     const pending = tasks.filter((t) => t.status === 'Pending').length;
     const inProgress = tasks.filter((t) => t.status === 'In Progress').length;
     const completed = tasks.filter((t) => t.status === 'Completed').length;
     const highPriority = tasks.filter((t) => t.priority === 'High').length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, pending, inProgress, completed, highPriority, completionRate };
+    const completionRate = actualTotal > 0 ? Math.round((completed / actualTotal) * 100) : 0;
+
+    return {
+      total: actualTotal,
+      pending,
+      inProgress,
+      completed,
+      highPriority,
+      completionRate,
+    };
   }, [stats, tasks, totalTasks]);
 
-  // Priority Distribution calculation
+  // Priority Distribution calculation strictly from active tasks
   const priorityCounts = useMemo(() => {
     if (!tasks || tasks.length === 0) {
       return { high: 0, medium: 0, low: 0, total: 0 };
