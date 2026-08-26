@@ -112,8 +112,8 @@ cp .env.example .env
 ```
 Default `.env` configuration:
 ```env
-VITE_USE_MOCK_API=true
-VITE_API_BASE_URL=http://localhost:8080
+VITE_USE_MOCK_API=false
+VITE_API_BASE_URL=https://team-task-manager-576e.onrender.com
 ```
 
 ### 3. Run Development Server
