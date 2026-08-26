@@ -12,6 +12,14 @@ import { simulateNetworkDelay } from './apiClient';
 
 const TASKS_STORAGE_KEY = 'project_dashboard_tasks';
 
+const getAuthHeaders = (): HeadersInit => {
+  const token = localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
 // Initialize tasks in LocalStorage if not present
 const getStoredTasks = (): Task[] => {
   const raw = localStorage.getItem(TASKS_STORAGE_KEY);
@@ -21,7 +29,6 @@ const getStoredTasks = (): Task[] => {
   }
   try {
     const tasks: Task[] = JSON.parse(raw);
-    // If local storage contains old AI-sounding task titles, replace with human-like titles
     if (tasks.some((t) => t.title.includes('Implement OAuth') || t.title.includes('Design Dashboard Analytics'))) {
       localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_TASKS));
       return INITIAL_MOCK_TASKS;
@@ -39,7 +46,7 @@ const saveStoredTasks = (tasks: Task[]): void => {
 
 export const taskService = {
   async getTasks(filters: TaskFilterState): Promise<PaginatedResult<Task>> {
-    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
     if (USE_MOCK_API) {
       await simulateNetworkDelay(200);
@@ -119,7 +126,9 @@ export const taskService = {
       limit: filters.pageSize.toString(),
     });
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks?${params.toString()}`);
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch tasks from server');
     }
@@ -127,26 +136,39 @@ export const taskService = {
   },
 
   async getTaskStats(): Promise<TaskStats> {
-    const tasks = getStoredTasks();
-    const total = tasks.length;
-    const pending = tasks.filter((t) => t.status === 'Pending').length;
-    const inProgress = tasks.filter((t) => t.status === 'In Progress').length;
-    const completed = tasks.filter((t) => t.status === 'Completed').length;
-    const highPriority = tasks.filter((t) => t.priority === 'High').length;
-    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
-    return {
-      total,
-      pending,
-      inProgress,
-      completed,
-      highPriority,
-      completionRate,
-    };
+    if (USE_MOCK_API) {
+      const tasks = getStoredTasks();
+      const total = tasks.length;
+      const pending = tasks.filter((t) => t.status === 'Pending').length;
+      const inProgress = tasks.filter((t) => t.status === 'In Progress').length;
+      const completed = tasks.filter((t) => t.status === 'Completed').length;
+      const highPriority = tasks.filter((t) => t.priority === 'High').length;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        total,
+        pending,
+        inProgress,
+        completed,
+        highPriority,
+        completionRate,
+      };
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/stats`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) {
+      // Fallback calculation if stats route fails
+      return { total: 0, pending: 0, inProgress: 0, completed: 0, highPriority: 0, completionRate: 0 };
+    }
+    return await response.json();
   },
 
   async createTask(payload: CreateTaskPayload): Promise<Task> {
-    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
     if (USE_MOCK_API) {
       await simulateNetworkDelay(250);
@@ -173,16 +195,19 @@ export const taskService = {
 
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error('Failed to create task');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ message: 'Failed to create task' }));
+      throw new Error(err.message || 'Failed to create task');
+    }
     return await response.json();
   },
 
   async updateTask(payload: UpdateTaskPayload): Promise<Task> {
-    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
     if (USE_MOCK_API) {
       await simulateNetworkDelay(250);
@@ -209,7 +234,7 @@ export const taskService = {
 
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${payload.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
 
@@ -218,11 +243,24 @@ export const taskService = {
   },
 
   async updateStatus(id: string, status: TaskStatus): Promise<Task> {
-    return this.updateTask({ id, status });
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
+
+    if (USE_MOCK_API) {
+      return this.updateTask({ id, status });
+    }
+
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) throw new Error('Failed to update status');
+    return await response.json();
   },
 
   async deleteTask(id: string): Promise<string> {
-    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
     if (USE_MOCK_API) {
       await simulateNetworkDelay(200);
@@ -234,6 +272,7 @@ export const taskService = {
 
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
 
     if (!response.ok) throw new Error('Failed to delete task');
