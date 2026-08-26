@@ -1,0 +1,38 @@
+name: CI / Build & Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: task-management/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./task-management
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: ./task-management
+        run: npm run lint
+
+      - name: Run Unit Tests
+        working-directory: ./task-management
+        run: npm run test
+
+      - name: Type Check & Build
+        working-directory: ./task-management
+        run: npm run build
