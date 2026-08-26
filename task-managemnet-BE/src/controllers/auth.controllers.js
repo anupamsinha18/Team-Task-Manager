@@ -4,9 +4,11 @@ const bcrypt = require("bcrypt");
 const salt = 10;
 require("dotenv").config();
 
+const getSecretKey = () => process.env.JWT_SECRET_KEY || process.env.JWT_SECRET || 'taskpulse_secret_2026';
+
 const signup = async (req, res) => {
   try {
-    const { name, email, password, isActive} = req.body;
+    const { name, email, password, isActive } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Please Fill All The Fields." });
     }
@@ -16,12 +18,12 @@ const signup = async (req, res) => {
         if (err) {
           return res
             .status(500)
-            .json({ message: "Something Went Wrong, Please Try Again Later1." });
+            .json({ message: "Something Went Wrong, Please Try Again Later." });
         } else {
-          await UserModel.create({ ...req.body,name, email, password: hash, isActive });
+          await UserModel.create({ ...req.body, name, email, password: hash, isActive });
           return res
             .status(201)
-            .json({ message: "Signup Successfull, Please Login" });
+            .json({ message: "Signup Successful, Please Login" });
         }
       });
     } else {
@@ -46,19 +48,26 @@ const login = async (req, res) => {
     let hash = user.password;
     bcrypt.compare(password, hash).then(function (result) {
       if (result === true) {
+        const secretKey = getSecretKey();
         let accessToken = jwt.sign(
           { userId: user._id, role: user.role },
-          process.env.JWT_SECRET_KEY,
-          { expiresIn: 60 * 15 }
+          secretKey,
+          { expiresIn: 60 * 60 * 8 }
         );
         let refreshToken = jwt.sign(
           { userId: user._id, role: user.role },
-          process.env.JWT_SECRET_KEY,
-          { expiresIn: 60 * 60 * 24 }
+          secretKey,
+          { expiresIn: 60 * 60 * 24 * 7 }
         );
         return res
           .status(200)
-          .json({ message: "Login Successful", accessToken, refreshToken, user: { _id: user._id, name: user.name, email: user.email }});
+          .json({
+            message: "Login Successful",
+            token: accessToken,
+            accessToken,
+            refreshToken,
+            user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role || 'Developer' }
+          });
       } else {
         return res
           .status(401)
