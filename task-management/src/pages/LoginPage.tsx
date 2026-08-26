@@ -154,9 +154,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="login-footer text-center mt-6 text-xs text-muted">
-          <span>Mock Auth Mode active • No database required to test</span>
-        </div>
+
       </div>
     </div>
   );
