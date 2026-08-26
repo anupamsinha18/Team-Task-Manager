@@ -25,9 +25,9 @@ export const DashboardPage: React.FC = () => {
     dispatch(fetchTasks());
   }, [dispatch]);
 
-  // Derived live statistics fallback
+  // Derived live statistics: strictly use real API stats whenever available
   const liveStats: TaskStats = useMemo(() => {
-    if (stats && stats.total > 0) return stats;
+    if (stats) return stats;
     const total = totalTasks || tasks.length;
     const pending = tasks.filter((t) => t.status === 'Pending').length;
     const inProgress = tasks.filter((t) => t.status === 'In Progress').length;
@@ -37,7 +37,7 @@ export const DashboardPage: React.FC = () => {
     return { total, pending, inProgress, completed, highPriority, completionRate };
   }, [stats, tasks, totalTasks]);
 
-  // Performance Optimization: useMemo for memoizing Priority Distribution metrics calculation
+  // Priority Distribution calculation
   const priorityCounts = useMemo(() => {
     if (!tasks || tasks.length === 0) {
       return { high: 0, medium: 0, low: 0, total: 0 };
@@ -48,7 +48,6 @@ export const DashboardPage: React.FC = () => {
     return { high, medium, low, total: tasks.length };
   }, [tasks]);
 
-  // Performance Optimization: useCallback for handlers
   const handleViewTask = useCallback(
     (task: Task) => {
       dispatch(setSelectedTask(task));

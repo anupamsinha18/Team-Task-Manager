@@ -1,7 +1,7 @@
 import { ApiError } from '../types/common';
 
-const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://team-task-manager-576e.onrender.com';
 
 // Helper to simulate realistic async network delay when running in Mock mode
 export const simulateNetworkDelay = (ms = 250): Promise<void> => {

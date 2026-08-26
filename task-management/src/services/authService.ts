@@ -11,7 +11,7 @@ const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false';
+    const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
     if (USE_MOCK_API) {
       await simulateNetworkDelay(300);
@@ -27,7 +27,6 @@ export const authService = {
       );
 
       if (!matchedUser) {
-        // Fallback default user for custom email entries
         const namePart = credentials.email.split('@')[0];
         const formattedName = namePart
           ? namePart.charAt(0).toUpperCase() + namePart.slice(1)
@@ -44,7 +43,6 @@ export const authService = {
       const mockToken = `mock_jwt_token_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const expiresAt = Date.now() + SESSION_DURATION_MS;
 
-      // Save to localStorage
       localStorage.setItem(TOKEN_KEY, mockToken);
       localStorage.setItem(USER_KEY, JSON.stringify(matchedUser));
       localStorage.setItem(EXPIRES_KEY, expiresAt.toString());
@@ -56,8 +54,8 @@ export const authService = {
       };
     }
 
-    // Real API integration
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://team-task-manager-576e.onrender.com';
+    const response = await fetch(`${baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
@@ -69,7 +67,7 @@ export const authService = {
     }
 
     const data = await response.json();
-    const token = data.token;
+    const token = data.token || data.accessToken;
     const user = data.user;
     const expiresAt = Date.now() + SESSION_DURATION_MS;
 
@@ -97,7 +95,6 @@ export const authService = {
 
     const expiresAt = parseInt(expiresAtStr, 10);
     if (Date.now() > expiresAt) {
-      // Token expired!
       this.logout();
       return { user: null, token: null, expiresAt: null };
     }

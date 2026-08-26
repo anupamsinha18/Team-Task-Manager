@@ -11,6 +11,7 @@ import { INITIAL_MOCK_TASKS, MOCK_USERS } from './mockData';
 import { simulateNetworkDelay } from './apiClient';
 
 const TASKS_STORAGE_KEY = 'project_dashboard_tasks';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://team-task-manager-576e.onrender.com';
 
 const getAuthHeaders = (): HeadersInit => {
   const token = localStorage.getItem('auth_token');
@@ -20,7 +21,6 @@ const getAuthHeaders = (): HeadersInit => {
   };
 };
 
-// Initialize tasks in LocalStorage if not present
 const getStoredTasks = (): Task[] => {
   const raw = localStorage.getItem(TASKS_STORAGE_KEY);
   if (!raw) {
@@ -29,10 +29,6 @@ const getStoredTasks = (): Task[] => {
   }
   try {
     const tasks: Task[] = JSON.parse(raw);
-    if (tasks.some((t) => t.title.includes('Implement OAuth') || t.title.includes('Design Dashboard Analytics'))) {
-      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_TASKS));
-      return INITIAL_MOCK_TASKS;
-    }
     return tasks;
   } catch {
     localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_TASKS));
@@ -52,7 +48,6 @@ export const taskService = {
       await simulateNetworkDelay(200);
       let tasks = getStoredTasks();
 
-      // 1. Search filter by title or description
       if (filters.searchQuery.trim()) {
         const query = filters.searchQuery.toLowerCase().trim();
         tasks = tasks.filter(
@@ -63,17 +58,14 @@ export const taskService = {
         );
       }
 
-      // 2. Filter by status
       if (filters.status !== 'All') {
         tasks = tasks.filter((t) => t.status === filters.status);
       }
 
-      // 3. Filter by priority
       if (filters.priority !== 'All') {
         tasks = tasks.filter((t) => t.priority === filters.priority);
       }
 
-      // 4. Sorting
       tasks.sort((a, b) => {
         let fieldA: string | number = '';
         let fieldB: string | number = '';
@@ -98,7 +90,6 @@ export const taskService = {
         return 0;
       });
 
-      // 5. Pagination
       const total = tasks.length;
       const pageSize = filters.pageSize || 10;
       const currentPage = filters.currentPage || 1;
@@ -115,7 +106,6 @@ export const taskService = {
       };
     }
 
-    // Real API Endpoint integration
     const params = new URLSearchParams({
       search: filters.searchQuery,
       status: filters.status,
@@ -126,7 +116,7 @@ export const taskService = {
       limit: filters.pageSize.toString(),
     });
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks?${params.toString()}`, {
+    const response = await fetch(`${BASE_URL}/tasks?${params.toString()}`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) {
@@ -157,11 +147,10 @@ export const taskService = {
       };
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/stats`, {
+    const response = await fetch(`${BASE_URL}/tasks/stats`, {
       headers: getAuthHeaders(),
     });
     if (!response.ok) {
-      // Fallback calculation if stats route fails
       return { total: 0, pending: 0, inProgress: 0, completed: 0, highPriority: 0, completionRate: 0 };
     }
     return await response.json();
@@ -193,7 +182,7 @@ export const taskService = {
       return newTask;
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks`, {
+    const response = await fetch(`${BASE_URL}/tasks`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -232,7 +221,7 @@ export const taskService = {
       return updatedTask;
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${payload.id}`, {
+    const response = await fetch(`${BASE_URL}/tasks/${payload.id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -249,7 +238,7 @@ export const taskService = {
       return this.updateTask({ id, status });
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, {
+    const response = await fetch(`${BASE_URL}/tasks/${id}`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status }),
@@ -270,7 +259,7 @@ export const taskService = {
       return id;
     }
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, {
+    const response = await fetch(`${BASE_URL}/tasks/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
