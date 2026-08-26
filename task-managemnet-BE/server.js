@@ -14,6 +14,14 @@ connectToDB();
 
 const port = process.env.PORT || process.env.SERVER_PORT || 8080;
 
+app.get('/', (req, res) => {
+    res.status(200).json({ 
+        message: "Team Task Manager Backend API is live", 
+        status: "active",
+        healthCheck: "/health" 
+    });
+});
+
 app.get('/health', (req, res) => {
     res.status(200).json({ message: "Server running successfully", status: "healthy" });
 });
