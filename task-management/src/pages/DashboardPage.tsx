@@ -11,19 +11,31 @@ import { TaskFormModal } from '../components/tasks/TaskFormModal';
 import { TaskDetailModal } from '../components/tasks/TaskDetailModal';
 import { Button } from '../components/common/Button';
 import { Plus, ArrowRight } from 'lucide-react';
-import { Task, CreateTaskPayload } from '../types/task';
+import { Task, CreateTaskPayload, TaskStats } from '../types/task';
 
 export const DashboardPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const { stats, tasks, isStatsLoading, selectedTask } = useAppSelector((state) => state.tasks);
+  const { stats, tasks, isStatsLoading, selectedTask, totalTasks } = useAppSelector((state) => state.tasks);
   const { isCreateModalOpen, isDetailModalOpen } = useAppSelector((state) => state.ui);
 
   useEffect(() => {
     dispatch(fetchTaskStats());
     dispatch(fetchTasks());
   }, [dispatch]);
+
+  // Derived live statistics fallback
+  const liveStats: TaskStats = useMemo(() => {
+    if (stats && stats.total > 0) return stats;
+    const total = totalTasks || tasks.length;
+    const pending = tasks.filter((t) => t.status === 'Pending').length;
+    const inProgress = tasks.filter((t) => t.status === 'In Progress').length;
+    const completed = tasks.filter((t) => t.status === 'Completed').length;
+    const highPriority = tasks.filter((t) => t.priority === 'High').length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, pending, inProgress, completed, highPriority, completionRate };
+  }, [stats, tasks, totalTasks]);
 
   // Performance Optimization: useMemo for memoizing Priority Distribution metrics calculation
   const priorityCounts = useMemo(() => {
@@ -82,7 +94,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Requirement #2: Metrics Cards Overview */}
-      <MetricsOverview stats={stats} isLoading={isStatsLoading} />
+      <MetricsOverview stats={liveStats} isLoading={isStatsLoading} />
 
       {/* Analytics Breakdown & Recent Tasks Feed */}
       <div className="dashboard-content-grid grid grid-cols-1 lg:grid-cols-3 gap-6">
